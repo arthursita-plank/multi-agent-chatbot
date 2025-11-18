@@ -9,6 +9,7 @@ import { z } from "zod"
 import { zodResolver } from "@hookform/resolvers/zod"
 
 import { toast } from "sonner"
+import { loginAction } from "@/actions"
 
 const loginSchema = z.object({
     email: z.email("Enter a valid email"),
@@ -36,10 +37,10 @@ export const LoginForm = () => {
 
     const onSubmit = async (values: LoginFormValues) => {
         toast.promise(
-            await new Promise((resolve) => setTimeout(resolve, 800)), {
+            loginAction(values.email, values.password), {
             loading: "Signing in...",
-            success: "Signed in successfully",
-            error: "Failed to sign in",
+            success: "Signed in successfully. Redirecting to chat...",
+            error: "Failed to sign in. Please try again.",
         }
         )
     }

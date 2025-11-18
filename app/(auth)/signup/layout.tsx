@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 
 export const metadata: Metadata = {
-    title: "Signup - Multi-Agent Chatbot",
+    title: "Signup - RobertGPT",
     description: "A multi-agent chatbot that can handle multiple conversations at once",
 };
 

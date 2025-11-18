@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Multi-Agent Chatbot",
+  title: "RobertGPT",
   description: "A multi-agent chatbot that can handle multiple conversations at once",
 };
 
