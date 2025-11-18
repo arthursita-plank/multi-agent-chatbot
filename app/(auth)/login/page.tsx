@@ -1,6 +1,20 @@
+import { redirect } from "next/navigation"
+
+import { ROUTES } from "@/constants"
+import { createSupabaseServerClient } from "@/lib/supabase/server"
+
 import { LoginForm } from "./components/login-form"
 
-export default function LoginPage() {
+export default async function LoginPage() {
+  const supabase = await createSupabaseServerClient()
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+
+  if (session) {
+    redirect(ROUTES.CHAT)
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm rounded-xl border border-border bg-card p-6 shadow-sm">

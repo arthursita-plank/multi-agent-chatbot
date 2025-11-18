@@ -10,6 +10,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 
 import { toast } from "sonner"
 import { loginAction } from "@/actions"
+import { useRouter } from "next/navigation"
 
 const loginSchema = z.object({
     email: z.email("Enter a valid email"),
@@ -22,7 +23,7 @@ const loginSchema = z.object({
 export type LoginFormValues = z.infer<typeof loginSchema>
 
 export const LoginForm = () => {
-
+    const router = useRouter()
     const {
         register,
         handleSubmit,
@@ -39,7 +40,12 @@ export const LoginForm = () => {
         toast.promise(
             loginAction(values.email, values.password), {
             loading: "Signing in...",
-            success: "Signed in successfully. Redirecting to chat...",
+            success: (data) => {
+                if (data.user) {
+                    router.push(ROUTES.CHAT)
+                }
+                return "Signed in successfully. Redirecting to chat..."
+            },
             error: "Failed to sign in. Please try again.",
         }
         )

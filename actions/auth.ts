@@ -1,9 +1,10 @@
 'use server';
 import { ROUTES } from "@/constants";
-import db from "@/services/db"
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const signUpAction = async (email: string, password: string) => {
-    const { data, error } = await db.auth.signUp({
+    const supabase = await createSupabaseServerClient()
+    const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -19,7 +20,8 @@ export const signUpAction = async (email: string, password: string) => {
 }
 
 export const loginAction = async (email: string, password: string) => {
-    const { data, error } = await db.auth.signInWithPassword({
+    const supabase = await createSupabaseServerClient()
+    const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
     })
