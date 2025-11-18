@@ -21,12 +21,14 @@ import { useAuth } from "@/providers/auth-provider"
 import { useRouter } from "next/navigation"
 
 type ChatRole = "assistant" | "user"
+type AgentLabel = "chat" | "weather" | "news"
 
 type ChatMessage = {
   id: string
   role: ChatRole
   content: string
   createdAt: Date
+  agent?: AgentLabel
 }
 
 const suggestedPrompts = [
@@ -44,6 +46,7 @@ type AssistantResponse = {
   message: {
     role: "assistant"
     content: string
+    agent?: AgentLabel
   }
   history: Array<{
     role: ChatRole
@@ -52,6 +55,9 @@ type AssistantResponse = {
   metadata: {
     persona: string
     model: string
+    agent: AgentLabel
+    toolName?: string
+    toolResponse?: string
   }
 }
 
@@ -82,6 +88,7 @@ export default function ChatPage() {
       content:
         "Tony here—your suitless AI co-pilot. Give me the mission and I’ll hand you a plan, a contingency, and a little Stark-grade encouragement.",
       createdAt: new Date(),
+      agent: "chat",
     },
   ])
   const [input, setInput] = React.useState("")
@@ -128,6 +135,7 @@ export default function ChatPage() {
         role: "assistant",
         content: response.message.content,
         createdAt: new Date(),
+        agent: response.metadata.agent ?? response.message.agent ?? "chat",
       }
 
       setMessages((prev) => [...prev, assistantMessage])
@@ -301,7 +309,7 @@ function MessageBubble({ message, displayName }: MessageBubbleProps) {
 
       <div className={cn("flex w-full max-w-[75%] flex-col gap-1", isUser ? "items-end" : "items-start")}>
         <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-          {isUser ? displayName : "Assistant"}
+          {isUser ? displayName : getAssistantLabel(message.agent)}
         </span>
         <div
           className={cn(
@@ -319,6 +327,17 @@ function MessageBubble({ message, displayName }: MessageBubbleProps) {
       </div>
     </div>
   )
+}
+
+function getAssistantLabel(agent?: AgentLabel) {
+  switch (agent) {
+    case "weather":
+      return "Assistant · Weather"
+    case "news":
+      return "Assistant · News"
+    default:
+      return "Assistant"
+  }
 }
 
 function formatTimestamp(value: Date) {

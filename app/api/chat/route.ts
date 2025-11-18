@@ -5,11 +5,14 @@ import { generateTonyReply, type PersonaChatMessage } from "@/lib/ai/langgraph"
 
 export const runtime = "nodejs"
 
+const AgentSchema = z.enum(["chat", "weather", "news"])
+
 const ChatMessageSchema = z.object({
   id: z.string().optional(),
   role: z.enum(["assistant", "user"]),
   content: z.string().min(1),
   createdAt: z.union([z.string(), z.number(), z.date()]).optional(),
+  agent: AgentSchema.optional(),
 })
 
 const ChatRequestSchema = z.object({
@@ -29,9 +32,10 @@ export async function POST(request: Request) {
   }
 
   try {
-    const history: PersonaChatMessage[] = payload.messages.map(({ role, content }) => ({
+    const history: PersonaChatMessage[] = payload.messages.map(({ role, content, agent }) => ({
       role,
       content,
+      agent: normalizeAgent(agent),
     }))
 
     const result = await generateTonyReply(history)
@@ -48,5 +52,10 @@ export async function POST(request: Request) {
       { status: 500 }
     )
   }
+}
+
+function normalizeAgent(agent?: z.infer<typeof AgentSchema>) {
+  const result = AgentSchema.safeParse(agent)
+  return result.success ? result.data : undefined
 }
 

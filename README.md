@@ -23,6 +23,10 @@ The chat assistant relies on Anthropic. Add the following entry to your local `.
 ```
 ANTHROPIC_API_KEY=your_claude_key
 LANGSMITH_API_KEY=your_langsmith_key
+WEATHER_API_KEY=your_weatherapi_key
+WEATHER_API_URL=https://api.weatherapi.com/v1
+NEWS_API_KEY=your_newsapi_key
+NEWS_API_URL=https://newsapi.org/v2
 ```
 
 For development the key stays on the server only—client code never reads it directly.
