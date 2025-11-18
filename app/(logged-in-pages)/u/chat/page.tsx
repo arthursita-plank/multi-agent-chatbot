@@ -3,6 +3,7 @@
 import * as React from "react"
 import { Bot, SendHorizontal, Sparkles } from "lucide-react"
 import { FaUserCircle } from "react-icons/fa"
+import ReactMarkdown from "react-markdown"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -86,7 +87,7 @@ export default function ChatPage() {
       id: createMessageId(),
       role: "assistant",
       content:
-        "Tony here—your suitless AI co-pilot. Give me the mission and I’ll hand you a plan, a contingency, and a little Stark-grade encouragement.",
+        "Robert here—your suitless AI co-pilot. Give me the mission and I’ll hand you a plan, a contingency, and a little Stark-grade encouragement.",
       createdAt: new Date(),
       agent: "chat",
     },
@@ -319,7 +320,24 @@ function MessageBubble({ message, displayName }: MessageBubbleProps) {
               : "bg-background"
           )}
         >
-          {message.content}
+          <ReactMarkdown
+            components={{
+              p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+              strong: ({ children }) => <strong className="font-bold">{children}</strong>,
+              em: ({ children }) => <em className="italic">{children}</em>,
+              ul: ({ children }) => <ul className="ml-4 list-disc space-y-1">{children}</ul>,
+              ol: ({ children }) => <ol className="ml-4 list-decimal space-y-1">{children}</ol>,
+              li: ({ children }) => <li>{children}</li>,
+              code: ({ children }) => (
+                <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">{children}</code>
+              ),
+              h1: ({ children }) => <h1 className="text-lg font-bold mb-2">{children}</h1>,
+              h2: ({ children }) => <h2 className="text-base font-bold mb-2">{children}</h2>,
+              h3: ({ children }) => <h3 className="text-sm font-bold mb-1">{children}</h3>,
+            }}
+          >
+            {message.content}
+          </ReactMarkdown>
         </div>
         <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
           {formatTimestamp(message.createdAt)}

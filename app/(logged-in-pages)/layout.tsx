@@ -11,8 +11,6 @@ export default async function LoggedInLayout({ children }: { children: ReactNode
     data: { session },
   } = await supabase.auth.getSession()
 
-  console.log(session)
-
   if (!session) {
     redirect(ROUTES.LOGIN)
   }
