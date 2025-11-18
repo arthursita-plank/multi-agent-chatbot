@@ -1,8 +1,12 @@
 import "server-only"
 
+import Anthropic from "@anthropic-ai/sdk"
 import { ChatAnthropic } from "@langchain/anthropic"
 import { AIMessage, BaseMessage, HumanMessage, SystemMessage } from "@langchain/core/messages"
 import { END, MessagesAnnotation, START, StateGraph } from "@langchain/langgraph"
+import { wrapSDK } from "langsmith/wrappers"
+
+import type { ClientOptions } from "@anthropic-ai/sdk"
 
 type PersonaRole = "assistant" | "user"
 
@@ -33,6 +37,8 @@ const TONY_SYSTEM_PROMPT = `You are "FRIDAY+", an upgraded Tony Stark-style AI c
 - prioritize clarity, creativity, and momentum; never be dismissive or vague`
 
 const DEFAULT_MODEL_NAME = "claude-sonnet-4-5-20250929"
+const LANGSMITH_ENABLED = Boolean(process.env.LANGSMITH_API_KEY)
+const LANGSMITH_RUN_NAME = "tony-stark-anthropic"
 
 let compiledGraph: GraphApp | null = null
 
@@ -80,6 +86,7 @@ function buildGraph() {
     apiKey,
     model: getModelName(),
     temperature: 0.6,
+    createClient: LANGSMITH_ENABLED ? instrumentedAnthropicClientFactory : undefined,
   })
 
   const builder = new StateGraph(MessagesAnnotation)
@@ -100,6 +107,20 @@ function buildGraph() {
 
 function getModelName() {
   return process.env.ANTHROPIC_MODEL || DEFAULT_MODEL_NAME
+}
+
+const instrumentedAnthropicClientFactory = (options: ClientOptions) => {
+  const client = new Anthropic(options)
+
+  if (!LANGSMITH_ENABLED) {
+    return client
+  }
+
+  return wrapSDK(client, {
+    name: LANGSMITH_RUN_NAME,
+    metadata: { persona: "tony" },
+    tags: ["langgraph", "anthropic", "tony-stark"],
+  })
 }
 
 function mapPersonaToBaseMessage(message: PersonaChatMessage): BaseMessage {

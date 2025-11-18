@@ -22,6 +22,7 @@ The chat assistant relies on Anthropic. Add the following entry to your local `.
 
 ```
 ANTHROPIC_API_KEY=your_claude_key
+LANGSMITH_API_KEY=your_langsmith_key
 ```
 
 For development the key stays on the server only—client code never reads it directly.
