@@ -40,26 +40,35 @@ const createMessageId = () =>
     ? crypto.randomUUID()
     : `msg-${Date.now()}-${Math.random().toString(16).slice(2)}`
 
-async function fakeChatCompletion(prompt: string, history: ChatMessage[]) {
-  await new Promise((resolve) => setTimeout(resolve, 1200))
+type AssistantResponse = {
+  message: {
+    role: "assistant"
+    content: string
+  }
+  history: Array<{
+    role: ChatRole
+    content: string
+  }>
+  metadata: {
+    persona: string
+    model: string
+  }
+}
 
-  const insights = [
-    "Try breaking the problem down into smaller checkpoints.",
-    "Focus on the simplest version that could work first.",
-    "Write things down—explaining it often reveals the answer.",
-    "Reserve time for reflection so you can celebrate the progress.",
-    "Think about which parts you can automate or templatize.",
-  ]
+async function requestChatCompletion(history: ChatMessage[]) {
+  const response = await fetch("/api/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    cache: "no-store",
+    body: JSON.stringify({ messages: history }),
+  })
 
-  const lastExchange =
-    history
-      .slice()
-      .reverse()
-      .find((message) => message.role === "user")?.content ?? prompt
+  if (!response.ok) {
+    const errorMessage = await response.text()
+    throw new Error(errorMessage || "Assistant is offline. Please try again.")
+  }
 
-  const tip = insights[Math.floor(Math.random() * insights.length)]
-
-  return `You mentioned: “${lastExchange}”. ${tip}`
+  return (await response.json()) as AssistantResponse
 }
 
 export default function ChatPage() {
@@ -71,14 +80,22 @@ export default function ChatPage() {
       id: createMessageId(),
       role: "assistant",
       content:
-        "Hey there! I’m your friendly multi-agent companion. Ask me anything and I’ll help you plan, reflect, and keep momentum.",
+        "Tony here—your suitless AI co-pilot. Give me the mission and I’ll hand you a plan, a contingency, and a little Stark-grade encouragement.",
       createdAt: new Date(),
     },
   ])
   const [input, setInput] = React.useState("")
   const [isLoading, setIsLoading] = React.useState(false)
+  const [error, setError] = React.useState<string | null>(null)
   const [isSigningOut, setIsSigningOut] = React.useState(false)
   const scrollAnchorRef = React.useRef<HTMLDivElement>(null)
+
+  const syncConversation = React.useCallback(async (_nextHistory: ChatMessage[]) => {
+    // Placeholder: once Supabase persistence is added we can sync here.
+    if (process.env.NODE_ENV === "development") {
+      console.debug(`[chat] conversation length: ${_nextHistory.length}`)
+    }
+  }, [])
 
   const displayName = user?.email ?? "Guest"
   const canSend = input.trim().length > 0 && !isLoading
@@ -98,21 +115,28 @@ export default function ChatPage() {
       createdAt: new Date(),
     }
 
-    setMessages((prev) => [...prev, userMessage])
+    const nextHistory = [...messages, userMessage]
+    setMessages(nextHistory)
     setInput("")
     setIsLoading(true)
+    setError(null)
 
     try {
-      const reply = await fakeChatCompletion(trimmed, [...messages, userMessage])
-
+      const response = await requestChatCompletion(nextHistory)
       const assistantMessage: ChatMessage = {
         id: createMessageId(),
         role: "assistant",
-        content: reply,
+        content: response.message.content,
         createdAt: new Date(),
       }
 
       setMessages((prev) => [...prev, assistantMessage])
+      void syncConversation([...nextHistory, assistantMessage])
+    } catch (cause) {
+      console.error("Failed to send chat message:", cause)
+      setError(
+        cause instanceof Error ? cause.message : "Something went wrong. Please try again."
+      )
     } finally {
       setIsLoading(false)
     }
@@ -227,6 +251,11 @@ export default function ChatPage() {
             aria-label="Message"
             className="min-h-[140px] resize-none"
           />
+          {error ? (
+            <p className="text-sm text-destructive">
+              Tony&apos;s uplink hit turbulence: {error}
+            </p>
+          ) : null}
           <div className="flex items-center justify-between">
             <Button
               type="button"
