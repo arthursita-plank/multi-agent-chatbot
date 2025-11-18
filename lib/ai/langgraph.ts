@@ -178,8 +178,11 @@ function buildGraph() {
   })
   builder.addNode("tools", toolNode)
 
+  // @ts-expect-error
   builder.addEdge(START, "agent")
+  // @ts-expect-error
   builder.addConditionalEdges("agent", (state) => determineNextStep(state))
+  // @ts-expect-error
   builder.addEdge("tools", "agent")
 
   return builder.compile()

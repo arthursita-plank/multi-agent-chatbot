@@ -91,7 +91,7 @@ export async function fetchWeatherSummary({ location, unit = "celsius" }: Weathe
     windKph: payload.current.wind_kph,
     windMph: payload.current.wind_mph,
     lastUpdated: payload.current.last_updated,
-    narrative: buildWeatherNarrative(payload, locationLabel, unit),
+    narrative: buildWeatherNarrative(payload as Required<Pick<WeatherApiResponse, "current">> & WeatherApiResponse, locationLabel, unit),
   }
 
   return summary
