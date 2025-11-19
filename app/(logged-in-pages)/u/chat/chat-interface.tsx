@@ -13,6 +13,7 @@ import { createClient } from "@/lib/supabase/client"
 import { useAuth } from "@/providers/auth-provider"
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { toast } from "sonner"
 
 import { ChatInput } from "./components/chat-input"
 import { ChatList } from "./components/chat-list"
@@ -164,6 +165,7 @@ export function ChatInterface({ chatId }: { chatId?: string }) {
             await syncConversation(assistantMessage, currentChatId)
 
             if (isNewChat) {
+                toast.success("Chat created")
                 router.replace(`/u/chat/${currentChatId}`)
             }
         } catch (cause) {

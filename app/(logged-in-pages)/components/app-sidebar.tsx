@@ -1,13 +1,26 @@
 'use client'
 
-import { MessageSquare, Plus, Settings } from "lucide-react"
+import { MessageSquare, Plus, Settings, Trash2 } from "lucide-react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
+import { toast } from "sonner"
 
-import { Button } from "@/components/ui/button"
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+
+import { Button, buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
-import { getChats } from "@/actions/chat"
+import { getChats, deleteChat } from "@/actions/chat"
 import { useEffect, useState } from "react"
 
 interface ChatSession {
@@ -18,6 +31,7 @@ interface ChatSession {
 
 export function AppSidebar() {
     const pathname = usePathname()
+    const router = useRouter()
     const [chats, setChats] = useState<ChatSession[]>([])
 
     useEffect(() => {
@@ -26,6 +40,21 @@ export function AppSidebar() {
             setChats(data || [])
         })
     }, [])
+
+    async function handleDeleteChat(chatId: string) {
+        try {
+            await deleteChat(chatId)
+            setChats((prev) => prev.filter((c) => c.id !== chatId))
+            toast.success("Chat deleted")
+
+            if (pathname === `/u/chat/${chatId}`) {
+                router.push("/u/chat")
+            }
+        } catch (error) {
+            console.error("Failed to delete chat:", error)
+            toast.error("Failed to delete chat")
+        }
+    }
 
     return (
         <div className="flex h-full w-[280px] flex-col border-r bg-muted/10">
@@ -50,18 +79,48 @@ export function AppSidebar() {
                         </Link>
                         <div className="flex flex-col gap-1 py-2">
                             {chats.map((chat) => (
-                                <Link key={chat.id} href={`/u/chat/${chat.id}`}>
-                                    <Button
-                                        variant="ghost"
+                                <div key={chat.id} className="group relative">
+                                    <Link
+                                        href={`/u/chat/${chat.id}`}
                                         className={cn(
-                                            "w-full justify-start gap-2 px-2 text-sm font-normal",
+                                            buttonVariants({ variant: "ghost" }),
+                                            "w-full justify-start gap-2 px-2 text-sm font-normal pr-8",
                                             pathname === `/u/chat/${chat.id}` && "bg-accent text-accent-foreground"
                                         )}
                                     >
                                         <MessageSquare className="h-4 w-4 text-muted-foreground" />
                                         <span className="truncate">{chat.title || "Untitled Chat"}</span>
-                                    </Button>
-                                </Link>
+                                    </Link>
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                            >
+                                                <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+                                                <span className="sr-only">Delete chat</span>
+                                            </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>Delete Chat?</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                    This will permanently delete this conversation. This action cannot be undone.
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                <AlertDialogAction
+                                                    onClick={() => handleDeleteChat(chat.id)}
+                                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                                >
+                                                    Delete
+                                                </AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                </div>
                             ))}
                         </div>
                     </div>

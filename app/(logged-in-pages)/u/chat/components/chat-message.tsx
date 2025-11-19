@@ -1,9 +1,9 @@
-import { Bot, User } from "lucide-react"
+import { Bot } from "lucide-react"
 import { FaUserCircle } from "react-icons/fa"
 import ReactMarkdown from "react-markdown"
 
 import { cn } from "@/lib/utils"
-import { AgentLabel, ChatMessage } from "../../types"
+import { AgentLabel, ChatMessage } from "../types"
 
 type MessageBubbleProps = {
     message: ChatMessage
