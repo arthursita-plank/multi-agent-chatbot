@@ -5,6 +5,8 @@ import {
     CardContent,
     CardFooter,
 } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Settings } from "lucide-react"
 import { ENDPOINTS } from "@/constants"
 import { ROUTES } from "@/constants/ROUTES"
 import { createClient } from "@/lib/supabase/client"
@@ -12,17 +14,12 @@ import { useAuth } from "@/providers/auth-provider"
 import { useRouter } from "next/navigation"
 import { KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react"
 
-import { ChatHeader } from "./components/chat-header"
 import { ChatInput } from "./components/chat-input"
 import { ChatList } from "./components/chat-list"
 import { AssistantResponse, ChatMessage } from "./types"
 import { createMessageId } from "./utils"
 
-const suggestedPrompts = [
-    "Give me a daily plan to learn more about AI.",
-    "Whats the weather like today in Brazil, Belo Horizonte?",
-    "Are there any news for today?",
-]
+
 
 async function requestChatCompletion(history: ChatMessage[]) {
     const response = await fetch(ENDPOINTS.INTERNAL.CHAT, {
@@ -123,56 +120,47 @@ export function ChatInterface() {
         }
     }
 
-    function handlePromptClick(prompt: string) {
-        form.setValue("input", prompt)
-    }
-
-    async function handleSignOut() {
-        if (isSigningOut) return
-        setIsSigningOut(true)
-        try {
-            const { error } = await supabase.auth.signOut()
-            if (error) {
-                console.error("Failed to sign out:", error)
-                return
-            }
-            router.replace(ROUTES.LOGIN)
-        } finally {
-            setIsSigningOut(false)
-        }
-    }
-
     return (
-        <Card className="flex h-full w-full max-w-3xl flex-col overflow-hidden">
-            <ChatHeader
-                displayName={displayName}
-                handleSignOut={handleSignOut}
-                isSigningOut={isSigningOut}
-                suggestedPrompts={suggestedPrompts}
-                handlePromptClick={handlePromptClick}
-            />
-
-            <CardContent className="flex-1 overflow-hidden">
-                <ChatList
-                    messages={messages}
-                    isLoading={isLoading}
-                    displayName={displayName}
-                    scrollAnchorRef={scrollAnchorRef}
-                />
-            </CardContent>
-
-            <CardFooter>
-                <ChatInput
-                    form={form}
-                    onSubmit={onSubmit}
-                    isLoading={isLoading}
-                />
-                {error ? (
-                    <p className="text-sm text-destructive mt-2">
-                        Tony&apos;s uplink hit turbulence: {error}
-                    </p>
-                ) : null}
-            </CardFooter>
-        </Card>
+        <div className="flex h-full flex-col overflow-hidden">
+            <header className="flex h-14 items-center justify-between border-b px-4 lg:h-[60px]">
+                <div className="flex items-center gap-2">
+                    <h1 className="text-lg font-semibold md:text-xl">J.A.R.V.I.S.</h1>
+                    <span className="text-xs text-muted-foreground">• Awaiting Command</span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <Button size="sm" onClick={() => window.location.reload()}>
+                        New Chat
+                    </Button>
+                    <Button variant="ghost" size="icon">
+                        <Settings className="h-4 w-4" />
+                        <span className="sr-only">Settings</span>
+                    </Button>
+                </div>
+            </header>
+            <div className="flex-1 overflow-hidden p-4">
+                <Card className="flex h-full flex-col overflow-hidden border-0 shadow-none">
+                    <CardContent className="flex-1 overflow-hidden p-0">
+                        <ChatList
+                            messages={messages}
+                            isLoading={isLoading}
+                            displayName={displayName}
+                            scrollAnchorRef={scrollAnchorRef}
+                        />
+                    </CardContent>
+                    <CardFooter className="p-0 pt-4">
+                        <ChatInput
+                            form={form}
+                            onSubmit={onSubmit}
+                            isLoading={isLoading}
+                        />
+                        {error ? (
+                            <p className="text-sm text-destructive mt-2">
+                                Tony&apos;s uplink hit turbulence: {error}
+                            </p>
+                        ) : null}
+                    </CardFooter>
+                </Card>
+            </div>
+        </div>
     )
 }

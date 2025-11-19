@@ -4,6 +4,7 @@ import type { ReactNode } from "react"
 import { ROUTES } from "@/constants"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
 import { AuthProvider } from "@/providers/auth-provider"
+import { AppSidebar } from "./components/app-sidebar"
 
 export default async function LoggedInLayout({ children }: { children: ReactNode }) {
   const supabase = await createSupabaseServerClient()
@@ -15,5 +16,14 @@ export default async function LoggedInLayout({ children }: { children: ReactNode
     redirect(ROUTES.LOGIN)
   }
 
-  return <AuthProvider session={session}>{children}</AuthProvider>
+  return (
+    <AuthProvider session={session}>
+      <div className="flex h-screen w-full overflow-hidden bg-background">
+        <AppSidebar />
+        <main className="flex-1 overflow-hidden">
+          {children}
+        </main>
+      </div>
+    </AuthProvider>
+  )
 }
