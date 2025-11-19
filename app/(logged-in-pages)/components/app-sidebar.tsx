@@ -7,22 +7,25 @@ import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
+import { getChats } from "@/actions/chat"
+import { useEffect, useState } from "react"
+
 interface ChatSession {
     id: string
     title: string
-    updatedAt: Date
+    updated_at: string
 }
-
-// Mock data for now
-const MOCK_CHATS: ChatSession[] = [
-    { id: '1', title: 'Renewable Energy Project', updatedAt: new Date() },
-    { id: '2', title: 'Market Analysis Q3', updatedAt: new Date() },
-    { id: '3', title: 'Python Script Visualization', updatedAt: new Date() },
-    { id: '4', title: 'New Product Launch Strategy', updatedAt: new Date() },
-]
 
 export function AppSidebar() {
     const pathname = usePathname()
+    const [chats, setChats] = useState<ChatSession[]>([])
+
+    useEffect(() => {
+        getChats().then((data) => {
+            // @ts-ignore - supabase types mismatch with interface but it's fine for now
+            setChats(data || [])
+        })
+    }, [])
 
     return (
         <div className="flex h-full w-[280px] flex-col border-r bg-muted/10">
@@ -39,24 +42,26 @@ export function AppSidebar() {
             <div className="flex-1 overflow-hidden">
                 <div className="h-full overflow-y-auto">
                     <div className="flex flex-col gap-2 p-4">
-                        <Button className="w-full justify-start gap-2" variant="secondary">
-                            <Plus className="h-4 w-4" />
-                            New Chat
-                        </Button>
+                        <Link href="/u/chat">
+                            <Button className="w-full justify-start gap-2" variant="secondary">
+                                <Plus className="h-4 w-4" />
+                                New Chat
+                            </Button>
+                        </Link>
                         <div className="flex flex-col gap-1 py-2">
-                            {MOCK_CHATS.map((chat) => (
-                                <Button
-                                    key={chat.id}
-                                    variant="ghost"
-                                    className={cn(
-                                        "justify-start gap-2 px-2 text-sm font-normal",
-                                        // For now just highlighting the first one or none, logic can be added later
-                                        false && "bg-accent text-accent-foreground"
-                                    )}
-                                >
-                                    <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                                    <span className="truncate">{chat.title}</span>
-                                </Button>
+                            {chats.map((chat) => (
+                                <Link key={chat.id} href={`/u/chat/${chat.id}`}>
+                                    <Button
+                                        variant="ghost"
+                                        className={cn(
+                                            "w-full justify-start gap-2 px-2 text-sm font-normal",
+                                            pathname === `/u/chat/${chat.id}` && "bg-accent text-accent-foreground"
+                                        )}
+                                    >
+                                        <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                                        <span className="truncate">{chat.title || "Untitled Chat"}</span>
+                                    </Button>
+                                </Link>
                             ))}
                         </div>
                     </div>

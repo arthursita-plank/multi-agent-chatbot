@@ -4,26 +4,26 @@ import { Textarea } from "@/components/ui/textarea"
 import { SendHorizontal } from "lucide-react"
 import { KeyboardEvent, useState } from "react"
 import { ENDPOINTS } from "@/constants"
-import { AgentLabel, ChatMessage, ChatRole } from "../types"
+import { AgentLabel, ChatMessage, ChatRole } from "../../types"
 
 type AssistantResponse = {
     message: {
-      role: "assistant"
-      content: string
-      agent?: AgentLabel
+        role: "assistant"
+        content: string
+        agent?: AgentLabel
     }
     history: Array<{
-      role: ChatRole
-      content: string
+        role: ChatRole
+        content: string
     }>
     metadata: {
-      persona: string
-      model: string
-      agent: AgentLabel
-      toolName?: string
-      toolResponse?: string
+        persona: string
+        model: string
+        agent: AgentLabel
+        toolName?: string
+        toolResponse?: string
     }
-  }
+}
 
 const createMessageId = () =>
     typeof crypto !== "undefined" && "randomUUID" in crypto

@@ -1,7 +1,7 @@
 import { Bot } from "lucide-react"
 import { RefObject } from "react"
 
-import { ChatMessage } from "../types"
+import { ChatMessage } from "../../types"
 import { MessageBubble } from "./chat-message"
 
 type ChatListProps = {
