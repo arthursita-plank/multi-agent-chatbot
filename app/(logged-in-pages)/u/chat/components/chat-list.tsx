@@ -17,9 +17,10 @@ export function ChatList({
     displayName,
     scrollAnchorRef,
 }: ChatListProps) {
+    const isLoadingAndLastMessageIsUser = isLoading && messages[messages.length - 1]?.role !== "assistant"
     return (
         <div className="scrollbar-thin flex h-full flex-col gap-6 overflow-y-auto rounded-xl bg-muted/40 p-6">
-            {messages.map((message) => (
+            {messages.filter(m => m.content.trim()).map((message) => (
                 <MessageBubble
                     key={message.id}
                     message={message}
@@ -27,7 +28,7 @@ export function ChatList({
                 />
             ))}
 
-            {isLoading ? (
+            {isLoadingAndLastMessageIsUser ? (
                 <div className="flex items-center gap-3 text-sm text-muted-foreground">
                     <div className="flex size-9 items-center justify-center rounded-full border border-primary/30 bg-primary/10 text-primary">
                         <Bot className="size-4" aria-hidden />

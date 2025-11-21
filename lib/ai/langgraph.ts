@@ -1,19 +1,15 @@
 import "server-only"
 
-import Anthropic from "@anthropic-ai/sdk"
-import { ChatAnthropic } from "@langchain/anthropic"
+import { ChatOpenAI } from "@langchain/openai"
 import { AIMessage, BaseMessage, HumanMessage, SystemMessage } from "@langchain/core/messages"
 import { ToolMessage } from "@langchain/core/messages/tool"
 import { DynamicStructuredTool } from "@langchain/core/tools"
 import { END, MessagesAnnotation, START, StateGraph } from "@langchain/langgraph"
 import { ToolNode } from "@langchain/langgraph/prebuilt"
-import { wrapSDK } from "langsmith/wrappers"
 import { z } from "zod"
 
 import { fetchTopHeadlines } from "@/lib/agents/news"
 import { fetchWeatherSummary } from "@/lib/agents/weather"
-
-import type { ClientOptions } from "@anthropic-ai/sdk"
 
 type PersonaRole = "assistant" | "user"
 type AgentLabel = "chat" | "weather" | "news"
@@ -55,9 +51,7 @@ const TONY_SYSTEM_PROMPT = `You are "FRIDAY+", an upgraded Tony Stark-style AI c
 - prioritize clarity, creativity, and momentum; never be dismissive or vague
 - Use tools when helpful: call \`get_real_time_weather\` for hyper-local forecasts and \`get_top_headlines\` for timely news intel before responding with a synthesized plan`
 
-const DEFAULT_MODEL_NAME = "claude-sonnet-4-5-20250929"
-const LANGSMITH_ENABLED = Boolean(process.env.LANGSMITH_API_KEY)
-const LANGSMITH_RUN_NAME = "tony-stark-anthropic"
+const DEFAULT_MODEL_NAME = "gpt-4o"
 const WEATHER_TOOL_NAME = "get_real_time_weather"
 const NEWS_TOOL_NAME = "get_top_headlines"
 
@@ -120,7 +114,7 @@ export async function generateTonyReply(history: PersonaChatMessage[]): Promise<
   const aiMessage = finalState.messages[finalState.messages.length - 1]
   const agentContext = inferAgentContext(finalState.messages)
 
-  if (!aiMessage || aiMessage._getType() !== "ai") {
+  if (!aiMessage || aiMessage.type !== "ai") {
     throw new Error("Assistant did not return a valid reply.")
   }
 
@@ -145,7 +139,7 @@ export async function generateTonyReply(history: PersonaChatMessage[]): Promise<
   }
 }
 
-function getGraph(): GraphApp {
+export function getGraph(): GraphApp {
   if (!compiledGraph) {
     compiledGraph = buildGraph()
   }
@@ -153,20 +147,18 @@ function getGraph(): GraphApp {
 }
 
 function buildGraph() {
-  const apiKey = process.env.ANTHROPIC_API_KEY
+  const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) {
-    throw new Error("ANTHROPIC_API_KEY is not configured.")
+    throw new Error("OPENAI_API_KEY is not configured.")
   }
 
-  const model = new ChatAnthropic({
+  const model = new ChatOpenAI({
     apiKey,
     model: getModelName(),
     temperature: 0.6,
-    createClient: LANGSMITH_ENABLED ? instrumentedAnthropicClientFactory : undefined,
   })
   const agentModel = model.bindTools(agentTools)
   const toolNode = new ToolNode(agentTools, { handleToolErrors: true })
-
   const builder = new StateGraph(MessagesAnnotation)
 
   builder.addNode("agent", async (state: GraphState) => {
@@ -189,7 +181,7 @@ function buildGraph() {
 }
 
 function getModelName() {
-  return process.env.ANTHROPIC_MODEL || DEFAULT_MODEL_NAME
+  return process.env.OPENAI_MODEL || DEFAULT_MODEL_NAME
 }
 
 function determineNextStep(state: GraphState) {
@@ -209,11 +201,11 @@ function isToolRequest(message?: BaseMessage) {
 }
 
 function inferAgentContext(messages: BaseMessage[]): AgentContext {
-  const lastUserIndex = findLastIndex(messages, (msg) => msg._getType() === "human")
+  const lastUserIndex = findLastIndex(messages, (msg) => msg.type === "human")
 
   for (let i = messages.length - 2; i > lastUserIndex; i -= 1) {
     const candidate = messages[i]
-    if (candidate?._getType() === "tool") {
+    if (candidate?.type === "tool") {
       const toolMessage = candidate as ToolMessage
       const agent = mapToolToAgent(toolMessage.name)
       if (agent) {
@@ -236,20 +228,6 @@ function findLastIndex<T>(items: T[], predicate: (value: T) => boolean) {
     }
   }
   return -1
-}
-
-const instrumentedAnthropicClientFactory = (options: ClientOptions) => {
-  const client = new Anthropic(options)
-
-  if (!LANGSMITH_ENABLED) {
-    return client
-  }
-
-  return wrapSDK(client, {
-    name: LANGSMITH_RUN_NAME,
-    metadata: { persona: "tony" },
-    tags: ["langgraph", "anthropic", "tony-stark"],
-  })
 }
 
 function mapPersonaToBaseMessage(message: PersonaChatMessage): BaseMessage {

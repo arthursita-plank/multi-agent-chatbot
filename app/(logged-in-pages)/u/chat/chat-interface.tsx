@@ -6,38 +6,20 @@ import {
     CardFooter,
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { LogOut, Settings } from "lucide-react"
-import { ENDPOINTS } from "@/constants"
+import { LogOut } from "lucide-react"
 import { ROUTES } from "@/constants/ROUTES"
 import { createClient } from "@/lib/supabase/client"
 import { useAuth } from "@/providers/auth-provider"
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
+import { useChat, Message } from "ai/react"
 
 import { ChatInput } from "./components/chat-input"
 import { ChatList } from "./components/chat-list"
 import { createChat, getMessages, saveMessage } from "@/actions/chat"
-import { AssistantResponse, ChatMessage } from "./types"
+import { ChatMessage } from "./types"
 import { createMessageId } from "./utils"
-
-async function requestChatCompletion(history: ChatMessage[]) {
-    const response = await fetch(ENDPOINTS.INTERNAL.CHAT, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        cache: "no-store",
-        body: JSON.stringify({
-            messages: history.map(({ agent, ...msg }) => msg),
-        }),
-    })
-
-    if (!response.ok) {
-        const errorMessage = await response.text()
-        throw new Error(errorMessage || "Assistant is offline. Please try again.")
-    }
-
-    return (await response.json()) as AssistantResponse
-}
 
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
@@ -47,15 +29,36 @@ export function ChatInterface({ chatId }: { chatId?: string }) {
     const { user } = useAuth()
     const router = useRouter()
     const supabase = useMemo(() => createClient(), [])
-    const [messages, setMessages] = useState<ChatMessage[]>(() => [])
+
+    const { messages, append, isLoading, setMessages, input, setInput } = useChat({
+        api: "/api/chat",
+        onError: (error) => {
+            toast.error("Robert's uplink hit turbulence: " + error.message)
+        },
+        onFinish: async (message) => {
+            if (chatId) {
+                await saveMessage(chatId, {
+                    id: message.id,
+                    role: "assistant",
+                    content: message.content,
+                    createdAt: new Date(),
+                    agent: "chat" // Defaulting to chat for now as we lost metadata streaming support in simple adapter
+                })
+            }
+        }
+    })
 
     useEffect(() => {
         if (chatId) {
             getMessages(chatId).then((msgs) => {
                 if (msgs.length > 0) {
-                    setMessages(msgs)
+                    setMessages(msgs.map(m => ({
+                        id: m.id,
+                        role: m.role as any,
+                        content: m.content,
+                        createdAt: new Date(m.createdAt)
+                    })))
                 } else {
-                    // If new chat or empty, show welcome
                     setMessages([
                         {
                             id: createMessageId(),
@@ -63,7 +66,6 @@ export function ChatInterface({ chatId }: { chatId?: string }) {
                             content:
                                 "Robert here—your suitless AI co-pilot. Give me the mission and I’ll hand you a plan, a contingency, and a little Stark-grade encouragement.",
                             createdAt: new Date(),
-                            agent: "chat",
                         },
                     ])
                 }
@@ -76,11 +78,10 @@ export function ChatInterface({ chatId }: { chatId?: string }) {
                     content:
                         "Robert here—your suitless AI co-pilot. Give me the mission and I’ll hand you a plan, a contingency, and a little Stark-grade encouragement.",
                     createdAt: new Date(),
-                    agent: "chat",
                 },
             ])
         }
-    }, [chatId])
+    }, [chatId, setMessages])
 
     const form = useForm<ChatFormValues>({
         resolver: zodResolver(chatSchema),
@@ -89,16 +90,8 @@ export function ChatInterface({ chatId }: { chatId?: string }) {
         },
     })
 
-    const [isLoading, setIsLoading] = useState(false)
-    const [error, setError] = useState<string | null>(null)
     const [isSigningOut, setIsSigningOut] = useState(false)
     const scrollAnchorRef = useRef<HTMLDivElement>(null)
-
-    const syncConversation = useCallback(async (message: ChatMessage, currentChatId?: string) => {
-        if (currentChatId) {
-            await saveMessage(currentChatId, message)
-        }
-    }, [])
 
     const displayName = user?.email ?? "Guest"
 
@@ -125,44 +118,36 @@ export function ChatInterface({ chatId }: { chatId?: string }) {
         const trimmed = values.input.trim()
         if (!trimmed) return
 
-        const userMessage: ChatMessage = {
-            id: createMessageId(),
-            role: "user",
-            content: trimmed,
-            createdAt: new Date(),
-        }
+        const userMessageId = createMessageId()
 
-        const nextHistory = [...messages, userMessage]
-        setMessages(nextHistory)
+        // Optimistically add user message handled by append? 
+        // useChat adds it automatically.
+
         form.reset()
-        setIsLoading(true)
-        setError(null)
 
         try {
-            // If no chatId, create one first
             let currentChatId = chatId
             let isNewChat = false
+
             if (!currentChatId) {
                 const newChat = await createChat(trimmed.slice(0, 50))
                 currentChatId = newChat.id
                 isNewChat = true
-                // Don't redirect yet, wait until flow finishes or at least user message is saved
             }
 
             // Save user message
-            await syncConversation(userMessage, currentChatId)
-
-            const response = await requestChatCompletion(nextHistory)
-            const assistantMessage: ChatMessage = {
-                id: createMessageId(),
-                role: "assistant",
-                content: response.message.content,
+            await saveMessage(currentChatId!, {
+                id: userMessageId,
+                role: "user",
+                content: trimmed,
                 createdAt: new Date(),
-                agent: response.metadata.agent ?? response.message.agent ?? "chat",
-            }
+            })
 
-            setMessages((prev) => [...prev, assistantMessage])
-            await syncConversation(assistantMessage, currentChatId)
+            await append({
+                id: userMessageId,
+                role: "user",
+                content: trimmed,
+            })
 
             if (isNewChat) {
                 toast.success("Chat created")
@@ -170,13 +155,18 @@ export function ChatInterface({ chatId }: { chatId?: string }) {
             }
         } catch (cause) {
             console.error("Failed to send chat message:", cause)
-            setError(
-                cause instanceof Error ? cause.message : "Something went wrong. Please try again."
-            )
-        } finally {
-            setIsLoading(false)
+            toast.error("Something went wrong. Please try again.")
         }
     }
+
+    // Convert AI SDK messages to ChatMessage type for ChatList
+    const uiMessages: ChatMessage[] = messages.map(m => ({
+        id: m.id,
+        role: m.role as "user" | "assistant",
+        content: m.content,
+        createdAt: m.createdAt || new Date(),
+        agent: "chat" // Fallback
+    }))
 
     return (
         <div className="flex h-full flex-col overflow-hidden">
@@ -202,7 +192,7 @@ export function ChatInterface({ chatId }: { chatId?: string }) {
                 <Card className="flex h-full flex-col overflow-hidden border-0 shadow-none">
                     <CardContent className="flex-1 overflow-hidden p-0">
                         <ChatList
-                            messages={messages}
+                            messages={uiMessages}
                             isLoading={isLoading}
                             displayName={displayName}
                             scrollAnchorRef={scrollAnchorRef}
@@ -214,11 +204,6 @@ export function ChatInterface({ chatId }: { chatId?: string }) {
                             onSubmit={onSubmit}
                             isLoading={isLoading}
                         />
-                        {error ? (
-                            <p className="text-sm text-destructive mt-2">
-                                Robert&apos;s uplink hit turbulence: {error}
-                            </p>
-                        ) : null}
                     </CardFooter>
                 </Card>
             </div>
