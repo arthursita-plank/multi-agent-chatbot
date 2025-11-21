@@ -193,7 +193,7 @@ function determineNextStep(state: GraphState) {
 }
 
 function isToolRequest(message?: BaseMessage) {
-  if (!message || message._getType() !== "ai") {
+  if (!message || message.type !== "ai") {
     return false
   }
   const aiMessage = message as AIMessage
@@ -238,7 +238,7 @@ function mapPersonaToBaseMessage(message: PersonaChatMessage): BaseMessage {
 }
 
 function baseToPersona(message: BaseMessage): PersonaChatMessage | null {
-  const role = message._getType()
+  const role = message.type
   if (role === "ai" || role === "human") {
     return {
       role: role === "ai" ? "assistant" : "user",

@@ -11,9 +11,9 @@ import { ROUTES } from "@/constants/ROUTES"
 import { createClient } from "@/lib/supabase/client"
 import { useAuth } from "@/providers/auth-provider"
 import { useRouter } from "next/navigation"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
-import { useChat, Message } from "ai/react"
+import { useChat } from "ai/react"
 
 import { ChatInput } from "./components/chat-input"
 import { ChatList } from "./components/chat-list"
@@ -30,7 +30,7 @@ export function ChatInterface({ chatId }: { chatId?: string }) {
     const router = useRouter()
     const supabase = useMemo(() => createClient(), [])
 
-    const { messages, append, isLoading, setMessages, input, setInput } = useChat({
+    const { messages, append, isLoading, setMessages } = useChat({
         api: "/api/chat",
         onError: (error) => {
             toast.error("Robert's uplink hit turbulence: " + error.message)
@@ -119,10 +119,6 @@ export function ChatInterface({ chatId }: { chatId?: string }) {
         if (!trimmed) return
 
         const userMessageId = createMessageId()
-
-        // Optimistically add user message handled by append? 
-        // useChat adds it automatically.
-
         form.reset()
 
         try {
@@ -135,7 +131,6 @@ export function ChatInterface({ chatId }: { chatId?: string }) {
                 isNewChat = true
             }
 
-            // Save user message
             await saveMessage(currentChatId!, {
                 id: userMessageId,
                 role: "user",
@@ -151,7 +146,7 @@ export function ChatInterface({ chatId }: { chatId?: string }) {
 
             if (isNewChat) {
                 toast.success("Chat created")
-                router.replace(`/u/chat/${currentChatId}`)
+                router.replace(`/u/chat?id=${currentChatId}`)
             }
         } catch (cause) {
             console.error("Failed to send chat message:", cause)

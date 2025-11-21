@@ -2,7 +2,7 @@
 
 import { MessageSquare, Plus, Settings, Trash2 } from "lucide-react"
 import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { toast } from "sonner"
 
 import {
@@ -32,6 +32,8 @@ interface ChatSession {
 export function AppSidebar() {
     const pathname = usePathname()
     const router = useRouter()
+    const searchParams = useSearchParams()
+    const currentChatId = searchParams.get('id')
     const [chats, setChats] = useState<ChatSession[]>([])
 
     useEffect(() => {
@@ -47,7 +49,7 @@ export function AppSidebar() {
             setChats((prev) => prev.filter((c) => c.id !== chatId))
             toast.success("Chat deleted")
 
-            if (pathname === `/u/chat/${chatId}`) {
+            if (currentChatId === chatId) {
                 router.push("/u/chat")
             }
         } catch (error) {
@@ -81,11 +83,11 @@ export function AppSidebar() {
                             {chats.map((chat) => (
                                 <div key={chat.id} className="group relative">
                                     <Link
-                                        href={`/u/chat/${chat.id}`}
+                                        href={`/u/chat?id=${chat.id}`}
                                         className={cn(
                                             buttonVariants({ variant: "ghost" }),
                                             "w-full justify-start gap-2 px-2 text-sm font-normal pr-8",
-                                            pathname === `/u/chat/${chat.id}` && "bg-accent text-accent-foreground"
+                                            currentChatId === chat.id && "bg-accent text-accent-foreground"
                                         )}
                                     >
                                         <MessageSquare className="h-4 w-4 text-muted-foreground" />
